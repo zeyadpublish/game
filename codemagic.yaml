@@ -1,0 +1,12 @@
+workflows:
+  android-release:
+    name: Strike Vector Android
+    environment:
+      node: 20
+    scripts:
+      - npm install
+      - npm run build
+      - npx cap sync android
+      - cd android && ./gradlew assembleRelease
+    artifacts:
+      - android/app/build/outputs/**/*.apk

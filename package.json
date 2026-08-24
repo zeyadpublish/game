@@ -1,0 +1,23 @@
+{
+  "name": "warzone-tactical-fps",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "electron": "electron electron.cjs",
+    "cap:sync": "npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "socket.io-client": "^4.7.5",
+    "three": "^0.168.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0",
+    "electron": "^33.2.1",
+    "vite": "^5.4.10"
+  }
+}

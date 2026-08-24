@@ -1,0 +1,8 @@
+{
+  "appId": "com.strikevector.tactical",
+  "appName": "Strike Vector",
+  "webDir": "dist",
+  "server": {
+    "allowNavigation": ["warzone-tactical-fps-server--my-api.replit.app"]
+  }
+}
