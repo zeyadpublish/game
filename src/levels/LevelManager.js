@@ -26,7 +26,10 @@ export class LevelManager {
     if (!skipEnemies) this._spawnEnemies(config);
     return config;
   }
-  spawnPoint() { return this.currentLevel === 2 ? new THREE.Vector3(0, 0, 20) : new THREE.Vector3(0, 0, 10); }
+  spawnPoint() {
+    const preferred = this.currentLevel === 2 ? new THREE.Vector3(0, 0, 20) : new THREE.Vector3(0, 0, 10);
+    return this.physics.findOpenPosition(preferred);
+  }
   _addGround(level) {
     const colors = ['#485763', '#4a3c32', '#0c1922'];
     const ground = new THREE.Mesh(
@@ -52,7 +55,9 @@ export class LevelManager {
         else if (dimensions.y > 20) material = new THREE.MeshStandardMaterial({ color: '#202b4b', metalness: .25, roughness: .6, emissive: '#080a20', emissiveIntensity: .3 });
         else material = new THREE.MeshStandardMaterial({ color: '#59616c', metalness: .12, roughness: .82 });
         mesh.material = material; mesh.castShadow = true; mesh.receiveShadow = true;
-        if (colliders.length < 100 && dimensions.y > 2 && dimensions.x > 1.3 && dimensions.z > 1.3) colliders.push(box);
+        const footprint = dimensions.x * dimensions.z;
+        const isBuildingSized = dimensions.y > 2 && dimensions.x > 1.3 && dimensions.z > 1.3 && dimensions.x < 38 && dimensions.z < 38 && footprint < 800;
+        if (colliders.length < 100 && isBuildingSized) colliders.push(box);
       });
       this.sceneManager.add(city); this.objects.push(city); this.physics.setColliders(colliders);
       this._addUrbanLandmarks();

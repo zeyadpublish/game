@@ -25,12 +25,39 @@ export class PhysicsManager {
     const objects = this.bulletTargets.filter((target) => !excluded.has(target));
     return this.raycaster.intersectObjects(objects, true)[0] || null;
   }
-  resolveMove(current, attempted, radius = 0.45) {
-    const probe = new THREE.Box3(
-      new THREE.Vector3(attempted.x - radius, attempted.y + 0.1, attempted.z - radius),
-      new THREE.Vector3(attempted.x + radius, attempted.y + 1.8, attempted.z + radius),
+  _playerBox(position, radius) {
+    return new THREE.Box3(
+      new THREE.Vector3(position.x - radius, position.y + 0.1, position.z - radius),
+      new THREE.Vector3(position.x + radius, position.y + 1.8, position.z + radius),
     );
-    if (this.colliders.some((box) => box.intersectsBox(probe))) return current.clone();
-    return attempted;
+  }
+  _isBlocked(position, radius, boxes = this.colliders) {
+    const probe = this._playerBox(position, radius);
+    return boxes.some((box) => box.intersectsBox(probe));
+  }
+  findOpenPosition(preferred, radius = 0.45) {
+    const origin = preferred.clone(); origin.y = this.getGroundHeight(origin);
+    if (!this._isBlocked(origin, radius)) return origin;
+    for (let distance = 3; distance <= 45; distance += 3) {
+      for (let step = 0; step < 16; step++) {
+        const angle = (step / 16) * Math.PI * 2;
+        const candidate = origin.clone().add(new THREE.Vector3(Math.cos(angle) * distance, 0, Math.sin(angle) * distance));
+        candidate.y = this.getGroundHeight(candidate);
+        if (!this._isBlocked(candidate, radius)) return candidate;
+      }
+    }
+    return origin;
+  }
+  resolveMove(current, attempted, radius = 0.45) {
+    // Ignore boxes that already contain the player. This prevents a malformed
+    // city collider from trapping the spawn point and freezing all controls.
+    const currentProbe = this._playerBox(current, radius);
+    const blockers = this.colliders.filter((box) => !box.intersectsBox(currentProbe));
+    if (!this._isBlocked(attempted, radius, blockers)) return attempted;
+    const xOnly = current.clone(); xOnly.x = attempted.x;
+    if (!this._isBlocked(xOnly, radius, blockers)) return xOnly;
+    const zOnly = current.clone(); zOnly.z = attempted.z;
+    if (!this._isBlocked(zOnly, radius, blockers)) return zOnly;
+    return current.clone();
   }
 }
