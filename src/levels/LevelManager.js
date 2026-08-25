@@ -59,7 +59,12 @@ export class LevelManager {
         const isBuildingSized = dimensions.y > 2 && dimensions.x > 1.3 && dimensions.z > 1.3 && dimensions.x < 38 && dimensions.z < 38 && footprint < 800;
         if (colliders.length < 100 && isBuildingSized) colliders.push(box);
       });
-      this.sceneManager.add(city); this.objects.push(city); this.physics.setColliders(colliders);
+      this.sceneManager.add(city); this.objects.push(city);
+      // The raw city model contains overlapping map-wide meshes. Keeping its
+      // AABBs as player walls can trap the spawn and prevent any walking.
+      // Render the supplied city in full, but use the deliberate landmark
+      // colliders below for reliable gameplay movement.
+      this.physics.setColliders([]);
       this._addUrbanLandmarks();
     } catch (error) {
       console.warn('City model unavailable; rendering original fallback district.', error);
