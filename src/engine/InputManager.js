@@ -3,6 +3,8 @@ import * as THREE from 'three';
 export class InputManager {
   constructor(canvas) {
     this.canvas = canvas;
+    this.canvas.tabIndex = 0;
+    this.canvas.setAttribute('aria-label', 'Game viewport');
     this.keys = new Set();
     this.look = new THREE.Vector2();
     this.fire = false;
@@ -12,6 +14,8 @@ export class InputManager {
     this.virtualMove = new THREE.Vector2();
     this.virtualLook = new THREE.Vector2();
     this.enabled = false;
+    this.dragLook = false;
+    this.pointerLocked = false;
     this._bind();
   }
   _bind() {
@@ -26,16 +30,26 @@ export class InputManager {
     document.addEventListener('mousemove', (e) => {
       if (document.pointerLockElement === this.canvas && this.enabled) this.look.add(e.movementX, e.movementY);
     });
-    this.canvas.addEventListener('pointermove', (e) => {
-      // Lets laptop users aim while dragging even when a browser declines pointer lock.
-      if (this.enabled && e.pointerType === 'mouse' && e.buttons && document.pointerLockElement !== this.canvas) this.look.add(e.movementX, e.movementY);
+    // Request lock from the original click, even if a HUD element is above the canvas.
+    document.addEventListener('pointerdown', (e) => {
+      if (!this.enabled || e.pointerType === 'touch' || e.button !== 0) return;
+      this.dragLook = true;
+      this.canvas.focus({ preventScroll: true });
+      this.captureMouse();
+    }, { capture: true });
+    document.addEventListener('pointermove', (e) => {
+      // Click-drag remains a usable camera fallback when a browser denies lock.
+      if (this.enabled && this.dragLook && e.pointerType === 'mouse' && document.pointerLockElement !== this.canvas) this.look.add(e.movementX, e.movementY);
+    }, { capture: true });
+    document.addEventListener('pointerup', () => { this.dragLook = false; }, { capture: true });
+    document.addEventListener('pointerlockchange', () => {
+      this.pointerLocked = document.pointerLockElement === this.canvas;
+      this.canvas.classList.toggle('pointer-locked', this.pointerLocked);
     });
     this.canvas.addEventListener('mousedown', (e) => {
       if (!this.enabled) return;
-      if (document.pointerLockElement !== this.canvas) {
-        const lockRequest = this.canvas.requestPointerLock?.();
-        lockRequest?.catch?.(() => {});
-      }
+      this.canvas.focus({ preventScroll: true });
+      this.captureMouse();
       if (e.button === 0) this.fire = true;
       if (e.button === 2) this.ads = true;
     });
@@ -52,6 +66,13 @@ export class InputManager {
   consumeLook() { const look = this.look.clone().add(this.virtualLook); this.look.set(0, 0); this.virtualLook.set(0, 0); return look; }
   consumeReload() { const result = this.reloadRequested; this.reloadRequested = false; return result; }
   consumeInteract() { const result = this.interactRequested; this.interactRequested = false; return result; }
-  clear() { this.keys.clear(); this.fire = false; this.ads = false; this.virtualMove.set(0, 0); this.virtualLook.set(0, 0); }
+  captureMouse() {
+    if (!this.enabled || this.pointerLocked || !this.canvas.requestPointerLock) return;
+    try {
+      const request = this.canvas.requestPointerLock({ unadjustedMovement: true });
+      request?.catch?.(() => this.canvas.requestPointerLock?.());
+    } catch { this.canvas.requestPointerLock(); }
+  }
+  clear() { this.keys.clear(); this.fire = false; this.ads = false; this.dragLook = false; this.virtualMove.set(0, 0); this.virtualLook.set(0, 0); }
   setEnabled(value) { this.enabled = value; if (!value && document.pointerLockElement === this.canvas) document.exitPointerLock(); }
 }

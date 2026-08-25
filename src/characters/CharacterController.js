@@ -25,7 +25,7 @@ export class CharacterController {
     this.sceneManager.add(this.group);
     this.stepClock = 0;
     this.velocity = new THREE.Vector3();
-    if (new URLSearchParams(location.search).get('detail') === '1') this.loadModel();
+    this.loadModel();
   }
   async loadModel() {
     try {
@@ -53,11 +53,7 @@ export class CharacterController {
     const right = new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
     const move = forward.multiplyScalar(m.y).add(right.multiplyScalar(m.x)).multiplyScalar(speed * delta);
     const attempted = this.position.clone().add(move);
-    const resolved = this.physics.resolveMove(this.position, attempted);
-    const blocked = moving && resolved.distanceToSquared(this.position) < 0.000001;
-    this.blockedTime = blocked ? (this.blockedTime || 0) + delta : 0;
-    // A malformed imported AABB should never make the game feel unresponsive.
-    this.position.copy(this.blockedTime > 0.35 ? attempted : resolved);
+    this.position.copy(this.physics.resolveMove(this.position, attempted));
     this.position.y = this.physics.getGroundHeight(this.position);
     this.group.position.copy(this.position);
     this.group.rotation.y = this.yaw;

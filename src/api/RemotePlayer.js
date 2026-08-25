@@ -6,8 +6,7 @@ export class RemotePlayer {
   constructor(sceneManager, data) {
     this.sceneManager = sceneManager; this.id = data.playerId; this.name = data.name || 'Operator'; this.health = data.health ?? 100;
     this.group = new THREE.Group(); this.target = new THREE.Vector3(data.x || 0, data.y || 0, data.z || 0); this.group.position.copy(this.target);
-    this._fallback(); this._label(); sceneManager.add(this.group);
-    if (new URLSearchParams(location.search).get('detail') === '1') this.loadModel();
+    this._fallback(); this._label(); sceneManager.add(this.group); this.loadModel();
   }
   _fallback() { const mesh = new THREE.Mesh(new THREE.CapsuleGeometry(.32, 1.15, 5, 10), new THREE.MeshStandardMaterial({ color: '#137f9a', roughness: .55 })); mesh.position.y = 1.1; mesh.castShadow = true; this.group.add(mesh); }
   _label() {

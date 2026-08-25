@@ -20,13 +20,7 @@ export class LevelManager {
     const config = LEVELS[levelNumber] || LEVELS[1];
     this.sceneManager.setMood(config.mood);
     this._addGround(levelNumber);
-    if (levelNumber === 1) {
-      // The supplied city FBX is an optional high-detail showcase. Its draw
-      // count can freeze touch devices, so gameplay uses the light district.
-      const showDetailedCity = new URLSearchParams(location.search).get('detail') === '1';
-      if (showDetailedCity) await this._loadCity();
-      else { this._buildArena(1); this._addUrbanLandmarks(); }
-    }
+    if (levelNumber === 1) await this._loadCity();
     else this._buildArena(levelNumber);
     this.player.reset(this.spawnPoint());
     if (!skipEnemies) this._spawnEnemies(config);

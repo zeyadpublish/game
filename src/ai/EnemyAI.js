@@ -7,13 +7,12 @@ export class EnemyAI {
   constructor({ sceneManager, physicsManager, spawn, player, variant = 'grunt', onKilled, onAttack }) {
     this.sceneManager = sceneManager; this.physics = physicsManager; this.player = player; this.variant = variant;
     this.onKilled = onKilled; this.onAttack = onAttack;
-    this.group = new THREE.Group(); this.group.position.copy(spawn); this.group.visible = true; this.group.name = `enemy-${variant}`;
+    this.group = new THREE.Group(); this.group.position.copy(spawn); this.group.visible = false; this.group.name = `enemy-${variant}`;
     this.group.userData.enemy = this;
     this.sceneManager.add(this.group); this.physics.registerTarget(this.group);
     this.health = variant === 'heavy' ? 155 : 80; this.dead = false; this.state = 'IDLE'; this.attackClock = Math.random();
     this.patrolAnchor = spawn.clone(); this.patrolAngle = Math.random() * Math.PI * 2; this.speed = variant === 'heavy' ? 2.2 : 3.7;
-    this._makeFallback();
-    this.ready = new URLSearchParams(location.search).get('detail') === '1' ? this.load() : Promise.resolve();
+    this._makeFallback(); this.ready = this.load();
   }
   _makeFallback() {
     const material = new THREE.MeshStandardMaterial({ color: this.variant === 'heavy' ? '#5c2d38' : '#263743', roughness: .65, metalness: .15 });
