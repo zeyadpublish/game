@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 
-const ASSETS = `${import.meta.env.BASE_URL}assets/`;
+const ASSETS = `${import.meta.env?.BASE_URL || new URL('../../public/', import.meta.url).href}assets/`;
 
 export class WeaponManager {
   constructor({ sceneManager, physicsManager, player, inputManager, audioManager, onHit, onKill, onShot }) {

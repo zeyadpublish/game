@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 
-const ASSETS = `${import.meta.env.BASE_URL}assets/`;
+const ASSETS = `${import.meta.env?.BASE_URL || new URL('../../public/', import.meta.url).href}assets/`;
 export class RemotePlayer {
   constructor(sceneManager, data) {
     this.sceneManager = sceneManager; this.id = data.playerId; this.name = data.name || 'Operator'; this.health = data.health ?? 100;

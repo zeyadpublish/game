@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { EnemyAI } from '../ai/EnemyAI.js';
 
-const ASSETS = `${import.meta.env.BASE_URL}assets/`;
+const ASSETS = `${import.meta.env?.BASE_URL || new URL('../../public/', import.meta.url).href}assets/`;
 const LEVELS = {
   1: { name: 'Civic District', mood: { background: '#7d98aa', fog: '#7d98aa', near: 92, far: 255, sun: 3 }, enemies: 8, heavies: 2 },
   2: { name: 'Foundry Transit', mood: { background: '#715844', fog: '#715844', near: 48, far: 155, sun: 1.4, exposure: .9 }, enemies: 13, heavies: 3 },

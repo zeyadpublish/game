@@ -1,4 +1,3 @@
-import './style.css';
 import * as THREE from 'three';
 import { SceneManager } from './engine/SceneManager.js';
 import { PhysicsManager } from './engine/PhysicsManager.js';

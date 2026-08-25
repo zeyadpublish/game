@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 
-const ASSETS = `${import.meta.env.BASE_URL}assets/`;
+const ASSETS = `${import.meta.env?.BASE_URL || new URL('../../public/', import.meta.url).href}assets/`;
 
 export class CharacterController {
   constructor({ sceneManager, physicsManager, inputManager, onDeath, onStep }) {

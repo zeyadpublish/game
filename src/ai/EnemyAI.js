@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 
-const ASSETS = `${import.meta.env.BASE_URL}assets/`;
+const ASSETS = `${import.meta.env?.BASE_URL || new URL('../../public/', import.meta.url).href}assets/`;
 const enemyLoader = new FBXLoader();
 let soldierTemplatePromise;
 let idleTemplatePromise;
