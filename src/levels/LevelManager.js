@@ -54,7 +54,11 @@ export class LevelManager {
         else if (name.includes('road') || name.includes('asphalt')) material = new THREE.MeshStandardMaterial({ color: '#20262a', roughness: .92 });
         else if (dimensions.y > 20) material = new THREE.MeshStandardMaterial({ color: '#202b4b', metalness: .25, roughness: .6, emissive: '#080a20', emissiveIntensity: .3 });
         else material = new THREE.MeshStandardMaterial({ color: '#59616c', metalness: .12, roughness: .82 });
-        mesh.material = material; mesh.castShadow = true; mesh.receiveShadow = true;
+        mesh.material = material;
+        // Preserve the full city while avoiding thousands of shadow-map draws
+        // that can stall keyboard/touch movement on mobile browsers.
+        mesh.castShadow = false; mesh.receiveShadow = false;
+        mesh.matrixAutoUpdate = false; mesh.updateMatrix();
         const footprint = dimensions.x * dimensions.z;
         const isBuildingSized = dimensions.y > 2 && dimensions.x > 1.3 && dimensions.z > 1.3 && dimensions.x < 38 && dimensions.z < 38 && footprint < 800;
         if (colliders.length < 100 && isBuildingSized) colliders.push(box);

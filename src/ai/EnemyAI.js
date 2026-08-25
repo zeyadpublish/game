@@ -1,7 +1,17 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 const ASSETS = `${import.meta.env.BASE_URL}assets/`;
+const enemyLoader = new FBXLoader();
+let soldierTemplatePromise;
+let idleTemplatePromise;
+
+function loadSharedSoldierAssets() {
+  soldierTemplatePromise ??= enemyLoader.loadAsync(`${ASSETS}models/soldier/Swat.fbx`);
+  idleTemplatePromise ??= enemyLoader.loadAsync(`${ASSETS}models/soldier/animations/idle.fbx`);
+  return Promise.all([soldierTemplatePromise, idleTemplatePromise]);
+}
 
 export class EnemyAI {
   constructor({ sceneManager, physicsManager, spawn, player, variant = 'grunt', onKilled, onAttack }) {
@@ -22,10 +32,8 @@ export class EnemyAI {
   }
   async load() {
     try {
-      const [model, idle] = await Promise.all([
-        new FBXLoader().loadAsync(`${ASSETS}models/soldier/Swat.fbx`),
-        new FBXLoader().loadAsync(`${ASSETS}models/soldier/animations/idle.fbx`),
-      ]);
+      const [source, idle] = await loadSharedSoldierAssets();
+      const model = cloneSkinned(source);
       model.scale.setScalar(.01); model.traverse((child) => { if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; child.userData.enemy = this; } });
       this.group.clear(); this.group.add(model);
       if (idle.animations?.[0]) { this.mixer = new THREE.AnimationMixer(model); this.mixer.clipAction(idle.animations[0]).play(); }

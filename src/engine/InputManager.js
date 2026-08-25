@@ -13,6 +13,8 @@ export class InputManager {
     this.interactRequested = false;
     this.virtualMove = new THREE.Vector2();
     this.virtualLook = new THREE.Vector2();
+    this.lockedMove = new THREE.Vector2();
+    this.movementLocked = false;
     this.enabled = false;
     this.dragLook = false;
     this.pointerLocked = false;
@@ -59,7 +61,10 @@ export class InputManager {
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.clear(); });
   }
   get movement() {
-    return new THREE.Vector2((this.keys.has('KeyD') ? 1 : 0) - (this.keys.has('KeyA') ? 1 : 0) + this.virtualMove.x, (this.keys.has('KeyW') ? 1 : 0) - (this.keys.has('KeyS') ? 1 : 0) + this.virtualMove.y).clampLength(0, 1);
+    return new THREE.Vector2(
+      (this.keys.has('KeyD') ? 1 : 0) - (this.keys.has('KeyA') ? 1 : 0) + this.virtualMove.x + (this.movementLocked ? this.lockedMove.x : 0),
+      (this.keys.has('KeyW') ? 1 : 0) - (this.keys.has('KeyS') ? 1 : 0) + this.virtualMove.y + (this.movementLocked ? this.lockedMove.y : 0),
+    ).clampLength(0, 1);
   }
   get sprint() { return this.keys.has('ShiftLeft') || this.keys.has('ShiftRight'); }
   get crouch() { return this.keys.has('ControlLeft') || this.keys.has('KeyC'); }
@@ -73,6 +78,16 @@ export class InputManager {
       request?.catch?.(() => this.canvas.requestPointerLock?.());
     } catch { this.canvas.requestPointerLock(); }
   }
-  clear() { this.keys.clear(); this.fire = false; this.ads = false; this.dragLook = false; this.virtualMove.set(0, 0); this.virtualLook.set(0, 0); }
+  toggleMovementLock() {
+    if (this.movementLocked) {
+      this.movementLocked = false; this.lockedMove.set(0, 0); return false;
+    }
+    this.lockedMove.copy(this.virtualMove);
+    if (this.lockedMove.lengthSq() < 0.02) this.lockedMove.set(0, 1);
+    else this.lockedMove.normalize();
+    this.movementLocked = true;
+    return true;
+  }
+  clear() { this.keys.clear(); this.fire = false; this.ads = false; this.dragLook = false; this.movementLocked = false; this.virtualMove.set(0, 0); this.virtualLook.set(0, 0); this.lockedMove.set(0, 0); }
   setEnabled(value) { this.enabled = value; if (!value && document.pointerLockElement === this.canvas) document.exitPointerLock(); }
 }

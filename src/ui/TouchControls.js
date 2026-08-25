@@ -1,7 +1,7 @@
 export class TouchControls {
   constructor(root, input) { this.root = root; this.input = input; this.active = navigator.maxTouchPoints > 0 || matchMedia('(pointer: coarse)').matches; if (this.active) this.build(); }
   build() {
-    const controls = document.createElement('div'); controls.className = 'touch-controls'; controls.innerHTML = `<div class="look-zone"></div><div class="stick"><i></i></div><div class="touch-actions"><button data-touch="ads">ADS</button><button data-touch="reload">R</button><button class="fire" data-touch="fire">FIRE</button></div>`; this.root.append(controls);
+    const controls = document.createElement('div'); controls.className = 'touch-controls'; controls.innerHTML = `<div class="look-zone"></div><div class="stick"><i></i></div><div class="touch-actions"><button data-touch="lock" aria-pressed="false">LOCK</button><button data-touch="reload">R</button><button data-touch="ads">ADS</button><button class="fire" data-touch="fire">FIRE</button></div>`; this.root.append(controls);
     const stick = controls.querySelector('.stick'), knob = stick.querySelector('i'); let start;
     stick.addEventListener('pointerdown', (e) => { e.preventDefault(); start = { x: e.clientX, y: e.clientY }; stick.setPointerCapture?.(e.pointerId); });
     stick.addEventListener('pointermove', (e) => { if (!start) return; const x = Math.max(-34, Math.min(34, e.clientX - start.x)); const y = Math.max(-34, Math.min(34, e.clientY - start.y)); knob.style.transform = `translate(${x}px,${y}px)`; this.input.virtualMove.set(x / 34, -y / 34); });
@@ -16,5 +16,10 @@ export class TouchControls {
     ads.addEventListener('pointerdown', (e) => { e.preventDefault(); this.input.ads = true; ads.setPointerCapture?.(e.pointerId); });
     ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((event) => ads.addEventListener(event, () => this.input.ads = false));
     controls.querySelector('[data-touch="reload"]').addEventListener('click', () => this.input.reloadRequested = true);
+    const lock = controls.querySelector('[data-touch="lock"]');
+    lock.addEventListener('click', (e) => {
+      e.preventDefault(); const active = this.input.toggleMovementLock();
+      lock.classList.toggle('active', active); lock.setAttribute('aria-pressed', String(active)); lock.textContent = active ? 'UNLOCK' : 'LOCK';
+    });
   }
 }
