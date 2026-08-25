@@ -27,7 +27,9 @@ export class LevelManager {
     return config;
   }
   spawnPoint() {
-    const preferred = this.currentLevel === 2 ? new THREE.Vector3(0, 0, 20) : new THREE.Vector3(0, 0, 10);
+    const preferred = this.currentLevel === 1
+      ? new THREE.Vector3(12, 0, -82)
+      : this.currentLevel === 2 ? new THREE.Vector3(0, 0, 20) : new THREE.Vector3(0, 0, 10);
     return this.physics.findOpenPosition(preferred);
   }
   _addGround(level) {
