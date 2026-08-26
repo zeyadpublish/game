@@ -35,12 +35,6 @@ export class InputManager {
     document.addEventListener('mousemove', (e) => {
       if (document.pointerLockElement === this.canvas && this.enabled) this.look.add(e.movementX, e.movementY);
     });
-    document.addEventListener('pointerdown', (e) => {
-      if (!this.enabled || e.target !== this.canvas || e.pointerType === 'touch' || e.button !== 0) return;
-      this.dragLook = true;
-      this.canvas.focus({ preventScroll: true });
-      this.captureMouse();
-    }, { capture: true });
     document.addEventListener('pointermove', (e) => {
       // Click-drag remains a usable camera fallback when a browser denies lock.
       if (this.enabled && this.dragLook && e.pointerType === 'mouse' && document.pointerLockElement !== this.canvas) this.look.add(e.movementX, e.movementY);
@@ -54,7 +48,7 @@ export class InputManager {
       if (!this.enabled) return;
       this.canvas.focus({ preventScroll: true });
       this.captureMouse();
-      if (e.button === 0) this.fire = true;
+      if (e.button === 0) { this.dragLook = true; this.fire = true; }
       if (e.button === 2) this.ads = true;
     });
     addEventListener('mouseup', (e) => { if (e.button === 0) this.fire = false; if (e.button === 2) this.ads = false; });
