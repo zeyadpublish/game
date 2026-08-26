@@ -3,9 +3,10 @@ export class TouchControls {
     this.root = root;
     this.input = input;
     const platform = navigator.userAgentData?.platform || navigator.platform || '';
+    const windowsDevice = /Windows NT/.test(navigator.userAgent);
     const appleTouchDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) || (platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const touchOnlyDevice = matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches;
-    this.active = appleTouchDevice || touchOnlyDevice;
+    this.active = !windowsDevice && (appleTouchDevice || touchOnlyDevice);
     if (this.active) this.build();
   }
   build() {
