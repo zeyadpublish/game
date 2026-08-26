@@ -1,5 +1,13 @@
 export class TouchControls {
-  constructor(root, input) { this.root = root; this.input = input; this.active = navigator.maxTouchPoints > 0 || matchMedia('(pointer: coarse)').matches; if (this.active) this.build(); }
+  constructor(root, input) {
+    this.root = root;
+    this.input = input;
+    const platform = navigator.userAgentData?.platform || navigator.platform || '';
+    const appleTouchDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) || (platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const touchOnlyDevice = matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches;
+    this.active = appleTouchDevice || touchOnlyDevice;
+    if (this.active) this.build();
+  }
   build() {
     const controls = document.createElement('div'); controls.className = 'touch-controls'; controls.innerHTML = `<div class="look-zone"></div><div class="stick"><i></i></div><div class="touch-actions"><button data-touch="lock" aria-pressed="false">LOCK</button><button data-touch="reload">R</button><button data-touch="ads">ADS</button><button class="fire" data-touch="fire">FIRE</button></div>`; this.root.append(controls);
     const stick = controls.querySelector('.stick'), knob = stick.querySelector('i'); let start;
