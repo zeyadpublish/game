@@ -13,7 +13,7 @@ export class LevelManager {
   constructor({ sceneManager, physicsManager, player, audioManager, onAllEnemiesKilled, onEnemyAttack, onEnemyKilled }) {
     this.sceneManager = sceneManager; this.physics = physicsManager; this.player = player; this.audio = audioManager;
     this.onAllEnemiesKilled = onAllEnemiesKilled; this.onEnemyAttack = onEnemyAttack; this.onEnemyKilled = onEnemyKilled;
-    this.objects = []; this.enemies = []; this.ground = null; this.currentLevel = 1;
+    this.objects = []; this.enemies = []; this.ground = null; this.currentLevel = 1; this.citySpawn = null;
   }
   async loadLevel(levelNumber, onAllEnemiesKilled = this.onAllEnemiesKilled, skipEnemies = false) {
     this.clear(); this.currentLevel = levelNumber; this.onAllEnemiesKilled = onAllEnemiesKilled;
@@ -28,7 +28,7 @@ export class LevelManager {
   }
   spawnPoint() {
     const preferred = this.currentLevel === 1
-      ? new THREE.Vector3(12, 0, -82)
+      ? this.citySpawn || new THREE.Vector3(0, 0, -82)
       : this.currentLevel === 2 ? new THREE.Vector3(0, 0, 20) : new THREE.Vector3(0, 0, 10);
     return this.physics.findOpenPosition(preferred);
   }
@@ -47,10 +47,11 @@ export class LevelManager {
       city.rotation.x = -Math.PI / 2; city.updateMatrixWorld(true);
       const before = new THREE.Box3().setFromObject(city); const size = before.getSize(new THREE.Vector3());
       const scale = 180 / Math.max(size.x || 1, size.z || 1); city.scale.setScalar(scale); city.updateMatrixWorld(true);
-      const colliders = [];
+      const bounds = new THREE.Box3().setFromObject(city);
+      this.citySpawn = new THREE.Vector3(bounds.getCenter(new THREE.Vector3()).x, 0, bounds.min.z - 14);
       city.traverse((mesh) => {
         if (!mesh.isMesh) return;
-        const name = mesh.name.toLowerCase(); const box = new THREE.Box3().setFromObject(mesh); const dimensions = box.getSize(new THREE.Vector3());
+        const name = mesh.name.toLowerCase(); const dimensions = new THREE.Box3().setFromObject(mesh).getSize(new THREE.Vector3());
         let material;
         if (name.includes('glass') || name.includes('window')) material = new THREE.MeshStandardMaterial({ color: '#1b7891', metalness: .55, roughness: .16, transparent: true, opacity: .58, emissive: '#07394a', emissiveIntensity: .45 });
         else if (name.includes('road') || name.includes('asphalt')) material = new THREE.MeshStandardMaterial({ color: '#20262a', roughness: .92 });
@@ -61,25 +62,13 @@ export class LevelManager {
         // that can stall keyboard/touch movement on mobile browsers.
         mesh.castShadow = false; mesh.receiveShadow = false;
         mesh.matrixAutoUpdate = false; mesh.updateMatrix();
-        const footprint = dimensions.x * dimensions.z;
-        const isBuildingSized = dimensions.y > 2 && dimensions.x > 1.3 && dimensions.z > 1.3 && dimensions.x < 38 && dimensions.z < 38 && footprint < 800;
-        if (colliders.length < 100 && isBuildingSized) colliders.push(box);
       });
       this.sceneManager.add(city); this.objects.push(city);
-      // The raw city model contains overlapping map-wide meshes. Keeping its
-      // AABBs as player walls can trap the spawn and prevent any walking.
-      // Render the supplied city in full, but use the deliberate landmark
-      // colliders below for reliable gameplay movement.
       this.physics.setColliders([]);
-      this._addUrbanLandmarks();
     } catch (error) {
       console.warn('City model unavailable; rendering original fallback district.', error);
       this._buildArena(1);
     }
-  }
-  _addUrbanLandmarks() {
-    const positions = [[-33, -32, 15, 10], [32, -32, 18, 8], [-45, 23, 12, 18], [30, 28, 10, 22], [-12, 45, 20, 6]];
-    positions.forEach(([x, z, width, height], i) => this._building(x, z, width, height, '#273750', i % 2 ? '#8bd6ff' : '#d9b67a'));
   }
   _buildArena(level) {
     const palettes = level === 2 ? ['#42352c', '#72553b', '#b48348'] : level === 3 ? ['#102130', '#17354a', '#4bd7ff'] : ['#273750', '#41546a', '#a2d5e8'];
@@ -142,7 +131,7 @@ export class LevelManager {
   clear() {
     this.enemies.forEach((enemy) => enemy.dispose()); this.enemies = [];
     this.objects.forEach((object) => this.sceneManager.remove(object)); this.objects = [];
-    this.physics.setColliders([]); this.physics.setGround([]);
+    this.citySpawn = null; this.physics.setColliders([]); this.physics.setGround([]);
     if (this.player.flashlight) { this.sceneManager.camera.remove(this.player.flashlight, this.player.flashlight.target); this.player.flashlight = null; }
   }
 }

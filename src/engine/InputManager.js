@@ -10,6 +10,7 @@ export class InputManager {
     this.fire = false;
     this.ads = false;
     this.reloadRequested = false;
+    this.jumpRequested = false;
     this.interactRequested = false;
     this.virtualMove = new THREE.Vector2();
     this.virtualLook = new THREE.Vector2();
@@ -23,18 +24,19 @@ export class InputManager {
   _bind() {
     window.addEventListener('keydown', (e) => {
       if (!this.enabled) return;
-      this.keys.add(e.code);
-      if (e.code === 'KeyR') this.reloadRequested = true;
-      if (e.code === 'KeyE') this.interactRequested = true;
-      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) e.preventDefault();
+      const code = this._keyCode(e);
+      this.keys.add(code);
+      if (code === 'KeyR') this.reloadRequested = true;
+      if (code === 'Space') this.jumpRequested = true;
+      if (code === 'KeyE') this.interactRequested = true;
+      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(code)) e.preventDefault();
     }, { capture: true });
-    window.addEventListener('keyup', (e) => this.keys.delete(e.code), { capture: true });
+    window.addEventListener('keyup', (e) => this.keys.delete(this._keyCode(e)), { capture: true });
     document.addEventListener('mousemove', (e) => {
       if (document.pointerLockElement === this.canvas && this.enabled) this.look.add(e.movementX, e.movementY);
     });
-    // Request lock from the original click, even if a HUD element is above the canvas.
     document.addEventListener('pointerdown', (e) => {
-      if (!this.enabled || e.pointerType === 'touch' || e.button !== 0) return;
+      if (!this.enabled || e.target !== this.canvas || e.pointerType === 'touch' || e.button !== 0) return;
       this.dragLook = true;
       this.canvas.focus({ preventScroll: true });
       this.captureMouse();
@@ -60,6 +62,11 @@ export class InputManager {
     window.addEventListener('blur', () => this.clear());
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.clear(); });
   }
+  _keyCode(event) {
+    const key = event.key?.toLowerCase();
+    const aliases = { w: 'KeyW', a: 'KeyA', s: 'KeyS', d: 'KeyD', r: 'KeyR', e: 'KeyE', c: 'KeyC', ' ': 'Space', arrowup: 'ArrowUp', arrowdown: 'ArrowDown', arrowleft: 'ArrowLeft', arrowright: 'ArrowRight', shift: 'ShiftLeft', control: 'ControlLeft' };
+    return aliases[key] || event.code || event.key;
+  }
   get movement() {
     return new THREE.Vector2(
       (this.keys.has('KeyD') || this.keys.has('ArrowRight') ? 1 : 0) - (this.keys.has('KeyA') || this.keys.has('ArrowLeft') ? 1 : 0) + this.virtualMove.x + (this.movementLocked ? this.lockedMove.x : 0),
@@ -70,6 +77,8 @@ export class InputManager {
   get crouch() { return this.keys.has('ControlLeft') || this.keys.has('KeyC'); }
   consumeLook() { const look = this.look.clone().add(this.virtualLook); this.look.set(0, 0); this.virtualLook.set(0, 0); return look; }
   consumeReload() { const result = this.reloadRequested; this.reloadRequested = false; return result; }
+  consumeJump() { const result = this.jumpRequested; this.jumpRequested = false; return result; }
+  requestJump() { this.jumpRequested = true; }
   consumeInteract() { const result = this.interactRequested; this.interactRequested = false; return result; }
   captureMouse() {
     if (!this.enabled || this.pointerLocked || !this.canvas.requestPointerLock) return;
@@ -88,6 +97,6 @@ export class InputManager {
     this.movementLocked = true;
     return true;
   }
-  clear() { this.keys.clear(); this.fire = false; this.ads = false; this.dragLook = false; this.movementLocked = false; this.virtualMove.set(0, 0); this.virtualLook.set(0, 0); this.lockedMove.set(0, 0); }
-  setEnabled(value) { this.enabled = value; if (!value && document.pointerLockElement === this.canvas) document.exitPointerLock(); }
+  clear() { this.keys.clear(); this.fire = false; this.ads = false; this.jumpRequested = false; this.dragLook = false; this.movementLocked = false; this.virtualMove.set(0, 0); this.virtualLook.set(0, 0); this.lockedMove.set(0, 0); }
+  setEnabled(value) { this.enabled = value; if (!value) { this.clear(); if (document.pointerLockElement === this.canvas) document.exitPointerLock(); } }
 }

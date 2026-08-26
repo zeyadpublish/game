@@ -21,12 +21,12 @@ const physics = new PhysicsManager();
 const input = new InputManager(canvas);
 const audio = new AudioManager(sceneManager.camera);
 const auth = new AuthAPI();
-let hud, player, weapon, levelManager, online, session, gameActive = false, mode = 'offline';
+let hud, player, weapon, levelManager, online, touchControls, session, gameActive = false, mode = 'offline';
 const remotePlayers = new Map();
 
 function clearRemotePlayers() { remotePlayers.forEach((remote) => remote.dispose()); remotePlayers.clear(); }
 function showMenu() {
-  gameActive = false; input.setEnabled(false); online?.disconnect(); clearRemotePlayers(); levelManager?.clear(); hud?.hide();
+  gameActive = false; input.setEnabled(false); touchControls?.destroy(); touchControls = null; online?.disconnect(); clearRemotePlayers(); levelManager?.clear(); hud?.hide();
   new MainMenuUI(root, { session, onlineClient: online, onStart: startGame }).show();
 }
 function wireOnlineEvents() {
@@ -43,7 +43,7 @@ function wireOnlineEvents() {
   online.on('error', () => hud.announce('NETWORK RETRYING — OFFLINE FALLBACK AVAILABLE'));
 }
 async function startGame(config) {
-  mode = config.mode; root.innerHTML = ''; hud = new HUD(root); const doneLoading = hud.loading(config.mode === 'offline' ? 'INITIALIZING TRAINING ZONE' : 'CONNECTING TO OPERATION');
+  mode = config.mode; touchControls?.destroy(); touchControls = null; root.innerHTML = ''; hud = new HUD(root); const doneLoading = hud.loading(config.mode === 'offline' ? 'INITIALIZING TRAINING ZONE' : 'CONNECTING TO OPERATION');
   if (!player) {
     player = new CharacterController({ sceneManager, physicsManager: physics, inputManager: input, onStep: () => audio.footstep(), onDeath: (attacker) => {
       gameActive = false; input.setEnabled(false); hud.damage(); hud.death(() => respawn(), () => showMenu()); hud.announce(`DOWNED BY ${attacker}`);
@@ -54,7 +54,7 @@ async function startGame(config) {
       if (level < 3) { gameActive = false; setTimeout(async () => { const close = hud.loading('PREPARING NEXT ZONE'); await levelManager.loadLevel(level + 1); close(); gameActive = true; }, 1800); }
     } });
   }
-  new TouchControls(root, input);
+  touchControls = new TouchControls(root, input);
   if (config.mode !== 'offline') { online = new OnlineClient(session.user.username); wireOnlineEvents(); online.connect(config.roomCode || `OPEN-${Math.random().toString(36).slice(2, 8).toUpperCase()}`); }
   await levelManager.loadLevel(config.level, undefined, config.mode !== 'offline');
   doneLoading(); hud.show(); hud.announce(config.mode === 'offline' ? 'CLEAR HOSTILES' : 'LIVE NETWORK OPERATION'); input.setEnabled(true); audio.unlock(); gameActive = true;

@@ -24,7 +24,10 @@ export class CharacterController {
     this.group.visible = false;
     this.sceneManager.add(this.group);
     this.stepClock = 0;
-    this.velocity = new THREE.Vector3();
+    this.verticalVelocity = 0;
+    this.grounded = true;
+    this.jumpSpeed = 8.5;
+    this.gravity = 26;
     this.loadModel();
   }
   async loadModel() {
@@ -36,7 +39,7 @@ export class CharacterController {
     } catch { /* First person remains playable with no local body mesh. */ }
   }
   reset(position = new THREE.Vector3(0, 0, 8)) {
-    this.position.copy(position); this.health = 100; this.armor = 150; this.dead = false; this.pitch = 0;
+    this.position.copy(position); this.health = 100; this.armor = 150; this.dead = false; this.pitch = 0; this.verticalVelocity = 0; this.grounded = true;
     this.sceneManager.camera.fov = 75; this.sceneManager.camera.updateProjectionMatrix();
   }
   update(delta) {
@@ -53,8 +56,14 @@ export class CharacterController {
     const right = new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
     const move = forward.multiplyScalar(m.y).add(right.multiplyScalar(m.x)).multiplyScalar(speed * delta);
     const attempted = this.position.clone().add(move);
-    this.position.copy(this.physics.resolveMove(this.position, attempted));
-    this.position.y = this.physics.getGroundHeight(this.position);
+    const resolved = this.physics.resolveMove(this.position, attempted);
+    const groundHeight = this.physics.getGroundHeight(resolved);
+    const wantsJump = this.input.consumeJump();
+    if (this.grounded && wantsJump) { this.verticalVelocity = this.jumpSpeed; this.grounded = false; }
+    this.verticalVelocity -= this.gravity * delta;
+    resolved.y = this.position.y + this.verticalVelocity * delta;
+    if (resolved.y <= groundHeight) { resolved.y = groundHeight; this.verticalVelocity = 0; this.grounded = true; }
+    this.position.copy(resolved);
     this.group.position.copy(this.position);
     this.group.rotation.y = this.yaw;
     const camera = this.sceneManager.camera;
