@@ -17,7 +17,6 @@ export class InputManager {
     this.lockedMove = new THREE.Vector2();
     this.movementLocked = false;
     this.enabled = false;
-    this.dragLook = false;
     this.pointerLocked = false;
     this._bind();
   }
@@ -35,11 +34,6 @@ export class InputManager {
     document.addEventListener('mousemove', (e) => {
       if (document.pointerLockElement === this.canvas && this.enabled) this.look.add(e.movementX, e.movementY);
     });
-    document.addEventListener('pointermove', (e) => {
-      // Click-drag remains a usable camera fallback when a browser denies lock.
-      if (this.enabled && this.dragLook && e.pointerType === 'mouse' && document.pointerLockElement !== this.canvas) this.look.add(e.movementX, e.movementY);
-    }, { capture: true });
-    document.addEventListener('pointerup', () => { this.dragLook = false; }, { capture: true });
     document.addEventListener('pointerlockchange', () => {
       this.pointerLocked = document.pointerLockElement === this.canvas;
       this.canvas.classList.toggle('pointer-locked', this.pointerLocked);
@@ -48,7 +42,7 @@ export class InputManager {
       if (!this.enabled) return;
       this.canvas.focus({ preventScroll: true });
       this.captureMouse();
-      if (e.button === 0) { this.dragLook = true; this.fire = true; }
+      if (e.button === 0) this.fire = true;
       if (e.button === 2) this.ads = true;
     });
     addEventListener('mouseup', (e) => { if (e.button === 0) this.fire = false; if (e.button === 2) this.ads = false; });
@@ -91,6 +85,6 @@ export class InputManager {
     this.movementLocked = true;
     return true;
   }
-  clear() { this.keys.clear(); this.fire = false; this.ads = false; this.jumpRequested = false; this.dragLook = false; this.movementLocked = false; this.virtualMove.set(0, 0); this.virtualLook.set(0, 0); this.lockedMove.set(0, 0); }
+  clear() { this.keys.clear(); this.fire = false; this.ads = false; this.jumpRequested = false; this.movementLocked = false; this.virtualMove.set(0, 0); this.virtualLook.set(0, 0); this.lockedMove.set(0, 0); }
   setEnabled(value) { this.enabled = value; if (!value) { this.clear(); if (document.pointerLockElement === this.canvas) document.exitPointerLock(); } }
 }

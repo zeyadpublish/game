@@ -1,7 +1,23 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 
 const ASSETS = `${import.meta.env?.BASE_URL || new URL('../../public/', import.meta.url).href}assets/`;
+const playerLoader = new FBXLoader();
+let playerModelPromise;
+let playerAnimationPromise;
+
+function loadPlayerAssets() {
+  playerModelPromise ??= playerLoader.loadAsync(`${ASSETS}models/soldier/Swat.fbx`);
+  playerAnimationPromise ??= Promise.allSettled([
+    ['idle', 'idle.fbx'],
+    ['walk', 'walk forward.fbx'],
+    ['run', 'run forward.fbx'],
+    ['jump', 'jump up.fbx'],
+  ].map(async ([name, file]) => [name, await playerLoader.loadAsync(`${ASSETS}models/soldier/animations/${file}`)]))
+    .then((results) => Object.fromEntries(results.filter((result) => result.status === 'fulfilled').map((result) => result.value)));
+  return Promise.all([playerModelPromise, playerAnimationPromise]);
+}
 
 export class CharacterController {
   constructor({ sceneManager, physicsManager, inputManager, onDeath, onStep }) {
@@ -20,7 +36,7 @@ export class CharacterController {
     this.sprintSpeed = 14;
     this.crouchSpeed = 3.5;
     this.group = new THREE.Group();
-    this.group.name = 'local-player-shadow';
+    this.group.name = 'local-player-soldier';
     this.group.visible = false;
     this.sceneManager.add(this.group);
     this.stepClock = 0;
@@ -32,10 +48,19 @@ export class CharacterController {
   }
   async loadModel() {
     try {
-      const model = await new FBXLoader().loadAsync(`${ASSETS}models/soldier/Swat.fbx`);
+      const [source, animations] = await loadPlayerAssets();
+      const model = cloneSkinned(source);
       model.scale.setScalar(0.01);
       model.traverse((child) => { if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; } });
       this.group.add(model);
+      this.mixer = new THREE.AnimationMixer(model); this.actions = {};
+      Object.entries(animations).forEach(([name, animation]) => {
+        const clip = animation.animations?.[0]; if (!clip) return;
+        const action = this.mixer.clipAction(clip);
+        if (name === 'jump') { action.setLoop(THREE.LoopOnce, 1); action.clampWhenFinished = false; }
+        this.actions[name] = action;
+      });
+      this._playAnimation('idle'); this.group.visible = true;
     } catch { /* First person remains playable with no local body mesh. */ }
   }
   reset(position = new THREE.Vector3(0, 0, 8)) {
@@ -59,13 +84,15 @@ export class CharacterController {
     const resolved = this.physics.resolveMove(this.position, attempted);
     const groundHeight = this.physics.getGroundHeight(resolved);
     const wantsJump = this.input.consumeJump();
-    if (this.grounded && wantsJump) { this.verticalVelocity = this.jumpSpeed; this.grounded = false; }
+    if (this.grounded && wantsJump) { this.verticalVelocity = this.jumpSpeed; this.grounded = false; this._playAnimation('jump'); }
     this.verticalVelocity -= this.gravity * delta;
     resolved.y = this.position.y + this.verticalVelocity * delta;
     if (resolved.y <= groundHeight) { resolved.y = groundHeight; this.verticalVelocity = 0; this.grounded = true; }
     this.position.copy(resolved);
-    this.group.position.copy(this.position);
-    this.group.rotation.y = this.yaw;
+    this.group.position.copy(this.position).addScaledVector(forward, .72);
+    this.group.rotation.y = this.yaw + Math.PI;
+    this.mixer?.update(delta);
+    if (this.grounded) this._playAnimation(moving ? (this.input.sprint ? 'run' : 'walk') : 'idle');
     const camera = this.sceneManager.camera;
     camera.position.set(this.position.x, this.position.y + (crouching ? 1.15 : 1.72), this.position.z);
     camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
@@ -73,6 +100,11 @@ export class CharacterController {
       this.stepClock += delta * speed;
       if (this.stepClock > 3.3) { this.stepClock = 0; this.onStep?.(); }
     } else this.stepClock = 0;
+  }
+  _playAnimation(name) {
+    const next = this.actions?.[name];
+    if (!next || this.activeAction === next) return;
+    this.activeAction?.fadeOut(.12); next.reset().fadeIn(.12).play(); this.activeAction = next;
   }
   takeDamage(amount, attacker = 'Hostile') {
     if (this.dead) return { healthDamage: 0, armorDamage: 0 };

@@ -5,12 +5,18 @@ import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js
 const ASSETS = `${import.meta.env?.BASE_URL || new URL('../../public/', import.meta.url).href}assets/`;
 const enemyLoader = new FBXLoader();
 let soldierTemplatePromise;
-let idleTemplatePromise;
+let animationTemplatesPromise;
 
 function loadSharedSoldierAssets() {
   soldierTemplatePromise ??= enemyLoader.loadAsync(`${ASSETS}models/soldier/Swat.fbx`);
-  idleTemplatePromise ??= enemyLoader.loadAsync(`${ASSETS}models/soldier/animations/idle.fbx`);
-  return Promise.all([soldierTemplatePromise, idleTemplatePromise]);
+  animationTemplatesPromise ??= Promise.allSettled([
+    ['idle', 'idle.fbx'],
+    ['combat', 'idle aiming.fbx'],
+    ['run', 'run forward.fbx'],
+    ['death', 'death from front.fbx'],
+  ].map(async ([name, file]) => [name, await enemyLoader.loadAsync(`${ASSETS}models/soldier/animations/${file}`)]))
+    .then((results) => Object.fromEntries(results.filter((result) => result.status === 'fulfilled').map((result) => result.value)));
+  return Promise.all([soldierTemplatePromise, animationTemplatesPromise]);
 }
 
 export class EnemyAI {
@@ -32,29 +38,39 @@ export class EnemyAI {
   }
   async load() {
     try {
-      const [source, idle] = await loadSharedSoldierAssets();
+      const [source, animations] = await loadSharedSoldierAssets();
       const model = cloneSkinned(source);
       model.scale.setScalar(.01); model.traverse((child) => { if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; child.userData.enemy = this; } });
       this.group.clear(); this.group.add(model);
-      if (idle.animations?.[0]) { this.mixer = new THREE.AnimationMixer(model); this.mixer.clipAction(idle.animations[0]).play(); }
+      this.mixer = new THREE.AnimationMixer(model); this.actions = {};
+      Object.entries(animations).forEach(([name, animation]) => {
+        const clip = animation.animations?.[0]; if (!clip) return;
+        const action = this.mixer.clipAction(clip);
+        if (name === 'death') { action.setLoop(THREE.LoopOnce, 1); action.clampWhenFinished = true; }
+        this.actions[name] = action;
+      });
+      this._playAnimation('idle');
     } catch { /* fallback target remains usable */ }
     this.group.position.y = this.physics.getGroundHeight(this.group.position);
     this.group.visible = true;
   }
   update(delta) {
-    if (this.dead || !this.group.visible) return;
-    this.group.position.y = this.physics.getGroundHeight(this.group.position);
+    if (!this.group.visible) return;
     this.mixer?.update(delta);
+    if (this.dead) return;
+    this.group.position.y = this.physics.getGroundHeight(this.group.position);
     const toPlayer = this.player.position.clone().sub(this.group.position); toPlayer.y = 0;
     const distance = toPlayer.length();
     if (distance < 28) this.state = distance < 13 ? (this.variant === 'heavy' ? 'CROUCH_COMBAT' : 'COMBAT') : 'CHASE';
     else this.state = 'PATROL';
+    let moving = false;
     if (this.state === 'PATROL') {
       this.patrolAngle += delta * .36;
       const target = this.patrolAnchor.clone().add(new THREE.Vector3(Math.sin(this.patrolAngle) * 5, 0, Math.cos(this.patrolAngle) * 5));
-      this._moveToward(target, delta * .5);
-    } else if (this.state === 'CHASE') this._moveToward(this.player.position, delta);
+      moving = this._moveToward(target, delta * .5);
+    } else if (this.state === 'CHASE') moving = this._moveToward(this.player.position, delta);
     if (distance < 20) this.group.lookAt(this.player.position.x, this.group.position.y, this.player.position.z);
+    this._playAnimation(moving ? 'run' : this.state.includes('COMBAT') ? 'combat' : 'idle');
     if (this.state.includes('COMBAT')) {
       this.attackClock += delta;
       if (this.attackClock > (this.variant === 'heavy' ? 1.15 : .78)) {
@@ -64,18 +80,27 @@ export class EnemyAI {
   }
   _moveToward(target, delta) {
     const direction = target.clone().sub(this.group.position); direction.y = 0;
-    if (direction.lengthSq() < 2) return;
+    if (direction.lengthSq() < 2) return false;
     direction.normalize();
     const attempted = this.group.position.clone().add(direction.multiplyScalar(this.speed * delta));
     this.group.position.copy(this.physics.resolveMove(this.group.position, attempted, .38));
     this.group.lookAt(target.x, this.group.position.y, target.z);
+    return true;
+  }
+  _playAnimation(name) {
+    const next = this.actions?.[name];
+    if (!next || this.activeAction === next) return;
+    this.activeAction?.fadeOut(.16);
+    next.reset().fadeIn(.16).play();
+    this.activeAction = next;
   }
   takeDamage(amount) {
     if (this.dead) return;
     this.health -= amount;
     if (this.health <= 0) {
       this.health = 0; this.dead = true; this.state = 'DEAD'; this.physics.unregisterTarget(this.group);
-      this.group.rotation.z = .9; this.onKilled?.(this);
+      if (this.actions?.death) this._playAnimation('death'); else this.group.rotation.z = .9;
+      this.onKilled?.(this);
     }
   }
   dispose() { this.physics.unregisterTarget(this.group); this.sceneManager.remove(this.group); }
